@@ -7,7 +7,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
-	"football-live-score/graph/model"
+	"football-live-score/internal/graph/model"
 	"math"
 	"strconv"
 	"sync/atomic"
