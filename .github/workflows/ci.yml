@@ -1,3 +1,11 @@
+# CI Workflow — Football Live Score App
+#
+# Hanya berjalan pada push/PR ke branch utama (main dan dev)
+# untuk menghemat kuota GitHub Actions.
+#
+# Alur: lint → build → test (sequential)
+# Jika satu job gagal, job berikutnya tidak dijalankan.
+
 name: CI
 
 on:
@@ -18,7 +26,8 @@ concurrency:
 jobs:
   # ─────────────────────────────────────────────
   # Job 1: Lint
-  # Cek kualitas kode sebelum build dan test
+  # Menggunakan go vet (linter resmi bawaan Go)
+  # Cepat (1-2 detik), tanpa dependency eksternal, hemat kuota
   # ─────────────────────────────────────────────
   lint:
     name: Lint
@@ -32,16 +41,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-          cache: false # golangci-lint mengelola cache-nya sendiri
+          cache: true
 
       - name: go vet (static analysis bawaan Go)
         run: go vet ./...
-
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
-        with:
-          version: latest
-          args: --timeout=5m
 
   # ─────────────────────────────────────────────
   # Job 2: Build
