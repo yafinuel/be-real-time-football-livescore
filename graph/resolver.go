@@ -8,4 +8,5 @@ import (
 type Resolver struct {
 	MatchService *service.MatchService
 	EventService *service.EventService
+	TeamService  *service.TeamService
 }

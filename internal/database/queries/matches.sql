@@ -13,3 +13,9 @@ UPDATE matches
 SET home_score = $2, away_score = $3
 WHERE id = $1
 RETURNING id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time;
+
+-- name: UpdateMatchStatus :one
+UPDATE matches
+SET status = $2, minute = COALESCE(sqlc.narg('minute'), minute)
+WHERE id = $1
+RETURNING id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time;

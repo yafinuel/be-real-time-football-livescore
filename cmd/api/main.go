@@ -49,6 +49,7 @@ func main() {
 
 	matchService := service.NewMatchService(matchRepo, teamRepo)
 	eventService := service.NewEventService(eventRepo, matchRepo)
+	teamService := service.NewTeamService(teamRepo)
 
 	// 4. Endpoint Health Check
 	http.HandleFunc("/healthy", HealthHandler(dbPool))
@@ -58,6 +59,7 @@ func main() {
 	resolver := &graph.Resolver{
 		MatchService: matchService,
 		EventService: eventService,
+		TeamService:  teamService,
 	}
 
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))

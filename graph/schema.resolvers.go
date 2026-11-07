@@ -7,27 +7,18 @@ package graph
 
 import (
 	"context"
-	"football-live-score/internal/domain"
 	"fmt"
 	"football-live-score/graph/model"
+	"football-live-score/internal/domain"
 	"time"
 )
 
-// CreateMatch is the resolver for the createMatch field.
-func (r *mutationResolver) CreateMatch(ctx context.Context, input model.CreateMatchInput) (*model.Match, error) {
-	panic(fmt.Errorf("not implemented: CreateMatch - createMatch"))
-}
-
-// UpdateScore is the resolver for the updateScore field.
-// UpdateScore is the resolver for the updateScore field.
-func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateScoreInput) (*model.Match, error) {
-	// 1. Panggil service bisnis kita
-	m, err := r.MatchService.UpdateScore(ctx, input.MatchID, input.HomeScore, input.AwayScore)
-	if err != nil {
-		return nil, err
+// Helper untuk konversi domain.Match ke model.Match lengkap beserta relasi dan events
+func (r *Resolver) toGraphQLMatch(ctx context.Context, m *domain.Match) *model.Match {
+	if m == nil {
+		return nil
 	}
 
-	// 2. Petakan hasil domain ke tipe GraphQL Match
 	var homeTeam *model.Team
 	if m.HomeTeam != nil {
 		homeTeam = &model.Team{
@@ -48,24 +39,50 @@ func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateSc
 		}
 	}
 
+	matchEvents := make([]*model.MatchEvent, 0)
+	if r.EventService != nil {
+		if events, err := r.EventService.GetEventsByMatchID(ctx, m.ID); err == nil {
+			for _, e := range events {
+				matchEvents = append(matchEvents, &model.MatchEvent{
+					ID:     e.ID,
+					Minute: e.Minute,
+					Type:   model.EventType(e.Type),
+					TeamID: e.TeamID,
+					Player: e.Player,
+					Detail: e.Detail,
+				})
+			}
+		}
+	}
+
 	return &model.Match{
-		ID:       m.ID,
-		HomeTeam: homeTeam,
-		AwayTeam: awayTeam,
-		Score: &model.Score{
-			Home: m.HomeScore,
-			Away: m.AwayScore,
-		},
+		ID:        m.ID,
+		HomeTeam:  homeTeam,
+		AwayTeam:  awayTeam,
+		Score:     &model.Score{Home: m.HomeScore, Away: m.AwayScore},
 		Status:    model.MatchStatus(m.Status),
 		Minute:    m.Minute,
 		StartTime: m.StartTime.Format(time.RFC3339),
-		Events:    []*model.MatchEvent{},
-	}, nil
+		Events:    matchEvents,
+	}
+}
+
+// CreateMatch is the resolver for the createMatch field.
+func (r *mutationResolver) CreateMatch(ctx context.Context, input model.CreateMatchInput) (*model.Match, error) {
+	panic(fmt.Errorf("not implemented: CreateMatch - createMatch"))
+}
+
+// UpdateScore is the resolver for the updateScore field.
+func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateScoreInput) (*model.Match, error) {
+	m, err := r.MatchService.UpdateScore(ctx, input.MatchID, input.HomeScore, input.AwayScore)
+	if err != nil {
+		return nil, err
+	}
+	return r.toGraphQLMatch(ctx, m), nil
 }
 
 // AddMatchEvent is the resolver for the addMatchEvent field.
 func (r *mutationResolver) AddMatchEvent(ctx context.Context, matchID string, input model.AddMatchEventInput) (*model.MatchEvent, error) {
-	// 1. Simpan event baru melalui EventService
 	event, err := r.EventService.AddEvent(
 		ctx,
 		matchID,
@@ -79,7 +96,6 @@ func (r *mutationResolver) AddMatchEvent(ctx context.Context, matchID string, in
 		return nil, err
 	}
 
-	// 2. Petakan ke GraphQL model
 	return &model.MatchEvent{
 		ID:     event.ID,
 		Minute: event.Minute,
@@ -92,85 +108,76 @@ func (r *mutationResolver) AddMatchEvent(ctx context.Context, matchID string, in
 
 // UpdateMatchStatus is the resolver for the updateMatchStatus field.
 func (r *mutationResolver) UpdateMatchStatus(ctx context.Context, matchID string, status model.MatchStatus, minute *int) (*model.Match, error) {
-	panic(fmt.Errorf("not implemented: UpdateMatchStatus - updateMatchStatus"))
+	m, err := r.MatchService.UpdateStatus(ctx, matchID, domain.MatchStatus(status), minute)
+	if err != nil {
+		return nil, err
+	}
+	return r.toGraphQLMatch(ctx, m), nil
 }
 
 // Matches is the resolver for the matches field.
-// Matches is the resolver for the matches field.
 func (r *queryResolver) Matches(ctx context.Context, status *model.MatchStatus, limit *int) ([]*model.Match, error) {
-	// 1. Ambil data pertandingan riil dari database melalui MatchService
 	domainMatches, err := r.MatchService.ListMatches(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("gagal mengambil data matches: %w", err)
 	}
 
-	// 2. Petakan dari Domain Model ke GraphQL Model
 	results := make([]*model.Match, 0, len(domainMatches))
 	for _, m := range domainMatches {
-
-		var homeTeam *model.Team
-		if m.HomeTeam != nil {
-			homeTeam = &model.Team{
-				ID:        m.HomeTeam.ID,
-				Name:      m.HomeTeam.Name,
-				ShortName: m.HomeTeam.ShortName,
-				LogoURL:   m.HomeTeam.LogoURL,
-			}
+		if status != nil && string(m.Status) != string(*status) {
+			continue
 		}
-
-		var awayTeam *model.Team
-		if m.AwayTeam != nil {
-			awayTeam = &model.Team{
-				ID:        m.AwayTeam.ID,
-				Name:      m.AwayTeam.Name,
-				ShortName: m.AwayTeam.ShortName,
-				LogoURL:   m.AwayTeam.LogoURL,
-			}
-		}
-
-		results = append(results, &model.Match{
-			ID:       m.ID,
-			HomeTeam: homeTeam,
-			AwayTeam: awayTeam,
-			Score: &model.Score{
-				Home: m.HomeScore,
-				Away: m.AwayScore,
-			},
-			Status:    model.MatchStatus(m.Status),
-			Minute:    m.Minute,
-			StartTime: m.StartTime.Format(time.RFC3339),
-			Events:    []*model.MatchEvent{},
-		})
-
-		events, _ := r.EventService.GetEventsByMatchID(ctx, m.ID)
-		var matchEvents []*model.MatchEvent
-		for _, e := range events {
-			matchEvents = append(matchEvents, &model.MatchEvent{
-				ID:     e.ID,
-				Minute: e.Minute,
-				Type:   model.EventType(e.Type),
-				TeamID: e.TeamID,
-				Player: e.Player,
-				Detail: e.Detail,
-			})
+		results = append(results, r.toGraphQLMatch(ctx, m))
+		if limit != nil && len(results) >= *limit {
+			break
 		}
 	}
 
 	return results, nil
 }
+
 // Match is the resolver for the match field.
 func (r *queryResolver) Match(ctx context.Context, id string) (*model.Match, error) {
-	panic(fmt.Errorf("not implemented: Match - match"))
+	m, err := r.MatchService.GetMatchByID(ctx, id)
+	if err != nil {
+		return nil, nil // GraphQL: mengembalikan null jika data tidak ditemukan
+	}
+	return r.toGraphQLMatch(ctx, m), nil
 }
 
 // LiveMatches is the resolver for the liveMatches field.
 func (r *queryResolver) LiveMatches(ctx context.Context) ([]*model.Match, error) {
-	panic(fmt.Errorf("not implemented: LiveMatches - liveMatches"))
+	liveMatches, err := r.MatchService.GetLiveMatches(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("gagal mengambil data live matches: %w", err)
+	}
+
+	results := make([]*model.Match, 0, len(liveMatches))
+	for _, m := range liveMatches {
+		results = append(results, r.toGraphQLMatch(ctx, m))
+	}
+
+	return results, nil
 }
 
 // Teams is the resolver for the teams field.
 func (r *queryResolver) Teams(ctx context.Context) ([]*model.Team, error) {
-	panic(fmt.Errorf("not implemented: Teams - teams"))
+	domainTeams, err := r.TeamService.ListTeams(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("gagal mengambil data teams: %w", err)
+	}
+
+	results := make([]*model.Team, 0, len(domainTeams))
+	for _, t := range domainTeams {
+		results = append(results, &model.Team{
+			ID:        t.ID,
+			Name:      t.Name,
+			ShortName: t.ShortName,
+			LogoURL:   t.LogoURL,
+		})
+	}
+
+	return results, nil
 }
 
 // MatchUpdated is the resolver for the matchUpdated field.
