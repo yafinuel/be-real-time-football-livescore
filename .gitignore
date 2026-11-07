@@ -1,0 +1,43 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, coverage, and profiling files
+*.test
+*.out
+coverage.txt
+
+# Environment variables & secrets
+.env
+*.env.local
+
+# Operating System files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE & Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Go module cache / vendor
+vendor/
+
+# Database & local data
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Log files & temporary files
+*.log
+tmp/
+dist/
+build/

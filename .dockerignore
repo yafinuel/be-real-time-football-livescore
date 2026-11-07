@@ -1,0 +1,20 @@
+# Git & Version Control
+.git
+.gitignore
+
+# Environment files with secrets (passed via compose environment instead)
+.env
+*.env.local
+
+# Documentation & Markdown files
+*.md
+
+# Local build artifacts & temporary files
+tmp/
+*.log
+*.test
+*.out
+
+# Editor files
+.idea/
+.vscode/
