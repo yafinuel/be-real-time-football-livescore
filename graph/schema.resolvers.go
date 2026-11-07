@@ -7,6 +7,7 @@ package graph
 
 import (
 	"context"
+	"football-live-score/internal/domain"
 	"fmt"
 	"football-live-score/graph/model"
 	"time"
@@ -64,7 +65,29 @@ func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateSc
 
 // AddMatchEvent is the resolver for the addMatchEvent field.
 func (r *mutationResolver) AddMatchEvent(ctx context.Context, matchID string, input model.AddMatchEventInput) (*model.MatchEvent, error) {
-	panic(fmt.Errorf("not implemented: AddMatchEvent - addMatchEvent"))
+	// 1. Simpan event baru melalui EventService
+	event, err := r.EventService.AddEvent(
+		ctx,
+		matchID,
+		input.Minute,
+		domain.EventType(input.Type),
+		input.TeamID,
+		input.Player,
+		input.Detail,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Petakan ke GraphQL model
+	return &model.MatchEvent{
+		ID:     event.ID,
+		Minute: event.Minute,
+		Type:   model.EventType(event.Type),
+		TeamID: event.TeamID,
+		Player: event.Player,
+		Detail: event.Detail,
+	}, nil
 }
 
 // UpdateMatchStatus is the resolver for the updateMatchStatus field.
@@ -84,6 +107,7 @@ func (r *queryResolver) Matches(ctx context.Context, status *model.MatchStatus, 
 	// 2. Petakan dari Domain Model ke GraphQL Model
 	results := make([]*model.Match, 0, len(domainMatches))
 	for _, m := range domainMatches {
+
 		var homeTeam *model.Team
 		if m.HomeTeam != nil {
 			homeTeam = &model.Team{
@@ -117,6 +141,19 @@ func (r *queryResolver) Matches(ctx context.Context, status *model.MatchStatus, 
 			StartTime: m.StartTime.Format(time.RFC3339),
 			Events:    []*model.MatchEvent{},
 		})
+
+		events, _ := r.EventService.GetEventsByMatchID(ctx, m.ID)
+		var matchEvents []*model.MatchEvent
+		for _, e := range events {
+			matchEvents = append(matchEvents, &model.MatchEvent{
+				ID:     e.ID,
+				Minute: e.Minute,
+				Type:   model.EventType(e.Type),
+				TeamID: e.TeamID,
+				Player: e.Player,
+				Detail: e.Detail,
+			})
+		}
 	}
 
 	return results, nil

@@ -7,4 +7,5 @@ import (
 // Resolver berfungsi untuk dependency injection
 type Resolver struct {
 	MatchService *service.MatchService
+	EventService *service.EventService
 }
