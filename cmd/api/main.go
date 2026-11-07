@@ -45,7 +45,11 @@ func main() {
 	queries := db.New(dbPool)
 	teamRepo := postgres.NewTeamRepository(queries)
 	matchRepo := postgres.NewMatchRepository(queries)
+	eventRepo := postgres.NewEventRepository(queries)
+
 	matchService := service.NewMatchService(matchRepo, teamRepo)
+	eventService := service.NewEventService(eventRepo, matchRepo)
+	teamService := service.NewTeamService(teamRepo)
 
 	// 4. Endpoint Health Check
 	http.HandleFunc("/healthy", HealthHandler(dbPool))
@@ -54,7 +58,10 @@ func main() {
 	// 5. GraphQL Server & Playground
 	resolver := &graph.Resolver{
 		MatchService: matchService,
+		EventService: eventService,
+		TeamService:  teamService,
 	}
+
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
