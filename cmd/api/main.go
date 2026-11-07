@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"os"
 
-	"football-live-score/graph"
+	"football-live-score/internal/graph"
+	"football-live-score/internal/config"
 	"football-live-score/internal/database"
 	db "football-live-score/internal/database/sqlc"
 	"football-live-score/internal/repository/postgres"
@@ -17,31 +17,27 @@ import (
 )
 
 func main() {
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable wajib diisi")
+	// 1. Load konfigurasi dari environment variable
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Gagal memuat konfigurasi: %v", err)
 	}
 
 	ctx := context.Background()
 
-	// 1. Inisialisasi Database Pool
-	dbPool, err := database.NewPostgresPool(ctx, dbURL)
+	// 2. Inisialisasi Database Pool
+	dbPool, err := database.NewPostgresPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Gagal inisialisasi database: %v", err)
 	}
 	defer dbPool.Close()
 
-	// 2. Jalankan Migrasi Otomatis
+	// 3. Jalankan Migrasi Otomatis
 	if err := database.RunMigrations(ctx, dbPool); err != nil {
 		log.Fatalf("Gagal menjalankan migrasi: %v", err)
 	}
 
-	// 3. Rakit Layer Arsitektur (Clean Architecture)
+	// 4. Rakit Layer Arsitektur (Clean Architecture)
 	queries := db.New(dbPool)
 	teamRepo := postgres.NewTeamRepository(queries)
 	matchRepo := postgres.NewMatchRepository(queries)
@@ -51,11 +47,11 @@ func main() {
 	eventService := service.NewEventService(eventRepo, matchRepo)
 	teamService := service.NewTeamService(teamRepo)
 
-	// 4. Endpoint Health Check
+	// 5. Endpoint Health Check
 	http.HandleFunc("/healthy", HealthHandler(dbPool))
 	http.HandleFunc("/healthy/", HealthHandler(dbPool))
 
-	// 5. GraphQL Server & Playground
+	// 6. GraphQL Server & Playground
 	resolver := &graph.Resolver{
 		MatchService: matchService,
 		EventService: eventService,
@@ -66,9 +62,9 @@ func main() {
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 
-	log.Printf("Server siap di port :%s", port)
-	log.Printf("Health check: http://localhost:%s/healthy", port)
-	log.Printf("GraphQL Playground: http://localhost:%s/", port)
+	log.Printf("Server siap di port :%s (env: %s)", cfg.Port, cfg.AppEnv)
+	log.Printf("Health check: http://localhost:%s/healthy", cfg.Port)
+	log.Printf("GraphQL Playground: http://localhost:%s/", cfg.Port)
 
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	log.Fatal(http.ListenAndServe(":"+cfg.Port, nil))
 }

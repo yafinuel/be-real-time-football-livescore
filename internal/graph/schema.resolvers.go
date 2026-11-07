@@ -8,7 +8,7 @@ package graph
 import (
 	"context"
 	"fmt"
-	"football-live-score/graph/model"
+	"football-live-score/internal/graph/model"
 	"football-live-score/internal/domain"
 	"time"
 )
