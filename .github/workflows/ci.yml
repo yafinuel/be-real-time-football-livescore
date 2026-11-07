@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+# Batalkan run lama jika ada push baru ke branch/PR yang sama
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Job 1: Lint
+  # Cek kualitas kode sebelum build dan test
+  # ─────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false # golangci-lint mengelola cache-nya sendiri
+
+      - name: go vet (static analysis bawaan Go)
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+  # ─────────────────────────────────────────────
+  # Job 2: Build
+  # Pastikan semua package bisa di-compile
+  # ─────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint # Hanya jalan jika lint lulus
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go build
+        run: go build ./...
+
+  # ─────────────────────────────────────────────
+  # Job 3: Test
+  # Jalankan semua test (unit + integration)
+  # Tidak butuh PostgreSQL karena test menggunakan mock repository
+  # ─────────────────────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build # Hanya jalan jika build lulus
+
+    steps:
+      - name: Checkout kode
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: go test
+        # -v       : output verbose agar log CI mudah dibaca
+        # -race    : deteksi race condition (penting untuk goroutine di PubSub nanti)
+        # -count=1 : matikan test cache agar test selalu dijalankan fresh
+        run: go test ./... -v -race -count=1
