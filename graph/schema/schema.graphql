@@ -1,0 +1,93 @@
+enum MatchStatus {
+  NOT_STARTED
+  LIVE
+  HALFTIME
+  FINISHED
+  POSTPONED # Perubahan jadwal
+  CANCELLED # Dibatalkan
+}
+
+enum EventType {
+  GOAL
+  YELLOW_CARD
+  RED_CARD
+  SUBSTITUTION
+}
+
+type Team {
+  id: ID!
+  name: String!
+  shortName: String!
+  logoUrl: String
+}
+
+type Score {
+  home: Int!
+  away: Int!
+}
+
+type MatchEvent {
+  id: ID!
+  minute: Int!
+  type: EventType!
+  teamId: ID!
+  player: String!
+  detail: String
+}
+
+type Match {
+  id: ID!
+  homeTeam: Team!
+  awayTeam: Team!
+  score: Score!
+  status: MatchStatus!
+  minute: Int!
+  startTime: String!
+  events: [MatchEvent!]!
+}
+
+input CreateMatchInput {
+  homeTeamId: ID!
+  awayTeamId: ID!
+  startTime: String!
+}
+
+input UpdateScoreInput {
+  matchId: ID!
+  homeScore: Int!
+  awayScore: Int!
+}
+
+input AddMatchEventInput {
+  minute: Int!
+  type: EventType!
+  teamId: ID!
+  player: String!
+  detail: String
+}
+
+type Query {
+  matches(status: MatchStatus, limit: Int): [Match!]!
+
+  match(id: ID!): Match
+
+  liveMatches: [Match!]!
+
+  teams: [Team!]!
+}
+
+type Mutation {
+  createMatch(input: CreateMatchInput!): Match!
+
+  updateScore(input: UpdateScoreInput!): Match!
+
+  addMatchEvent(matchId: ID!, input: AddMatchEventInput!): MatchEvent!
+
+  updateMatchStatus(matchId: ID!, status: MatchStatus!, minute: Int): Match!
+}
+
+type Subscription {
+  matchUpdated(matchId: ID): Match!
+
+  newEventAdded(matchId: ID!): MatchEvent!
+}
