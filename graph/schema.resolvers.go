@@ -18,8 +18,48 @@ func (r *mutationResolver) CreateMatch(ctx context.Context, input model.CreateMa
 }
 
 // UpdateScore is the resolver for the updateScore field.
+// UpdateScore is the resolver for the updateScore field.
 func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateScoreInput) (*model.Match, error) {
-	panic(fmt.Errorf("not implemented: UpdateScore - updateScore"))
+	// 1. Panggil service bisnis kita
+	m, err := r.MatchService.UpdateScore(ctx, input.MatchID, input.HomeScore, input.AwayScore)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Petakan hasil domain ke tipe GraphQL Match
+	var homeTeam *model.Team
+	if m.HomeTeam != nil {
+		homeTeam = &model.Team{
+			ID:        m.HomeTeam.ID,
+			Name:      m.HomeTeam.Name,
+			ShortName: m.HomeTeam.ShortName,
+			LogoURL:   m.HomeTeam.LogoURL,
+		}
+	}
+
+	var awayTeam *model.Team
+	if m.AwayTeam != nil {
+		awayTeam = &model.Team{
+			ID:        m.AwayTeam.ID,
+			Name:      m.AwayTeam.Name,
+			ShortName: m.AwayTeam.ShortName,
+			LogoURL:   m.AwayTeam.LogoURL,
+		}
+	}
+
+	return &model.Match{
+		ID:       m.ID,
+		HomeTeam: homeTeam,
+		AwayTeam: awayTeam,
+		Score: &model.Score{
+			Home: m.HomeScore,
+			Away: m.AwayScore,
+		},
+		Status:    model.MatchStatus(m.Status),
+		Minute:    m.Minute,
+		StartTime: m.StartTime.Format(time.RFC3339),
+		Events:    []*model.MatchEvent{},
+	}, nil
 }
 
 // AddMatchEvent is the resolver for the addMatchEvent field.

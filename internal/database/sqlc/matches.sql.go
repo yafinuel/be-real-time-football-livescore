@@ -65,3 +65,32 @@ func (q *Queries) ListMatches(ctx context.Context) ([]Match, error) {
 	}
 	return items, nil
 }
+
+const updateMatchScore = `-- name: UpdateMatchScore :one
+UPDATE matches
+SET home_score = $2, away_score = $3
+WHERE id = $1
+RETURNING id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time
+`
+
+type UpdateMatchScoreParams struct {
+	ID        string
+	HomeScore int32
+	AwayScore int32
+}
+
+func (q *Queries) UpdateMatchScore(ctx context.Context, arg UpdateMatchScoreParams) (Match, error) {
+	row := q.db.QueryRow(ctx, updateMatchScore, arg.ID, arg.HomeScore, arg.AwayScore)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.HomeTeamID,
+		&i.AwayTeamID,
+		&i.HomeScore,
+		&i.AwayScore,
+		&i.Status,
+		&i.Minute,
+		&i.StartTime,
+	)
+	return i, err
+}

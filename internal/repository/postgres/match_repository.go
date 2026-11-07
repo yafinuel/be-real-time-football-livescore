@@ -50,3 +50,16 @@ func toDomainMatch(m *db.Match) *domain.Match {
 		StartTime:  m.StartTime.Time,
 	}
 }
+
+func (r *MatchRepository) UpdateScore(ctx context.Context, id string, homeScore, awayScore int) (*domain.Match, error) {
+	row, err := r.q.UpdateMatchScore(ctx, db.UpdateMatchScoreParams{
+		ID:        id,
+		HomeScore: int32(homeScore),
+		AwayScore: int32(awayScore),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toDomainMatch(&row), nil
+}
