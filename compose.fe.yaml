@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────
+# Docker Compose Khusus Frontend Developer
+# ─────────────────────────────────────────────────────────────
+# Tidak memerlukan instalasi Go, compiler, atau build lokal!
+# Image backend ditarik langsung dari GitHub Container Registry (GHCR).
+#
+# Cara Menjalankan:
+#   docker compose -f compose.fe.yaml up -d
+#
+# Cara Mematikan:
+#   docker compose -f compose.fe.yaml down
+#
+# Endpoint yang Siap Digunakan:
+#   - GraphQL Playground : http://localhost:8080/
+#   - HTTP API Endpoint  : http://localhost:8080/query
+#   - WebSocket Endpoint : ws://localhost:8080/query
+# ─────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: football-live-score-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: football_live_score
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-fe-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d football_live_score"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ghcr.io/yafinuel/be-real-time-football-livescore:latest
+    container_name: football-live-score-api
+    environment:
+      - PORT=8080
+      - DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/football_live_score?sslmode=disable
+      - APP_ENV=development
+      - SIMULATOR_INTERVAL=45s
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres-fe-data:

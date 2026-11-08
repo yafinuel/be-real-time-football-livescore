@@ -1,0 +1,37 @@
+# Di mana lokasi skema GraphQL Anda berada
+schema:
+  - internal/graph/schema/*.graphql
+
+# Lokasi file runtime internal GraphQL yang akan di-generate oleh gqlgen
+exec:
+  filename: internal/graph/generated.go
+  package: graph
+
+# Lokasi struct/model Go otomatis hasil generate dari GraphQL types
+model:
+  filename: internal/graph/model/models_gen.go
+  package: model
+
+# Konfigurasi resolver (tempat logika/kodingan query dan mutasi kita)
+resolver:
+  layout: follow-schema
+  dir: internal/graph
+  package: graph
+  filename_template: "{name}.resolvers.go"
+
+# Pengaturan mapping tipe data
+# autobind:
+#   - "football-live-score/internal/graph/model"
+
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Uint
+      - github.com/99designs/gqlgen/graphql.Uint64
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64

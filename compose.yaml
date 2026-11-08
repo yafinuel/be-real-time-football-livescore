@@ -20,12 +20,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: football-live-score-api
     working_dir: /app
     environment:
       - PORT=${PORT}
       - DATABASE_URL=${DATABASE_URL}
       - APP_ENV=${APP_ENV}
+      - SIMULATOR_INTERVAL=${SIMULATOR_INTERVAL:-45s}
     volumes:
       - .:/app
       - go-mod-cache:/go/pkg/mod
