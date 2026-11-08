@@ -3,13 +3,15 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 // Config menyimpan seluruh konfigurasi aplikasi yang dibaca dari environment variable
 type Config struct {
-	Port        string
-	DatabaseURL string
-	AppEnv      string
+	Port              string
+	DatabaseURL       string
+	AppEnv            string
+	SimulatorInterval time.Duration
 }
 
 // Load membaca environment variable dan mengembalikan Config
@@ -30,10 +32,18 @@ func Load() (*Config, error) {
 		appEnv = "development"
 	}
 
+	simInterval := 45 * time.Second
+	if intervalStr := os.Getenv("SIMULATOR_INTERVAL"); intervalStr != "" {
+		if parsed, err := time.ParseDuration(intervalStr); err == nil {
+			simInterval = parsed
+		}
+	}
+
 	return &Config{
-		Port:        port,
-		DatabaseURL: dbURL,
-		AppEnv:      appEnv,
+		Port:              port,
+		DatabaseURL:       dbURL,
+		AppEnv:            appEnv,
+		SimulatorInterval: simInterval,
 	}, nil
 }
 

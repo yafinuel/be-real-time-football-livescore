@@ -3,6 +3,7 @@ package config_test
 import (
 	"os"
 	"testing"
+	"time"
 
 	"football-live-score/internal/config"
 )
@@ -11,10 +12,12 @@ func TestLoad_Success(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/testdb")
 	os.Setenv("PORT", "9090")
 	os.Setenv("APP_ENV", "production")
+	os.Setenv("SIMULATOR_INTERVAL", "30s")
 	defer func() {
 		os.Unsetenv("DATABASE_URL")
 		os.Unsetenv("PORT")
 		os.Unsetenv("APP_ENV")
+		os.Unsetenv("SIMULATOR_INTERVAL")
 	}()
 
 	cfg, err := config.Load()
@@ -31,12 +34,16 @@ func TestLoad_Success(t *testing.T) {
 	if cfg.AppEnv != "production" {
 		t.Errorf("AppEnv tidak sesuai: %s", cfg.AppEnv)
 	}
+	if cfg.SimulatorInterval != 30*time.Second {
+		t.Errorf("SimulatorInterval tidak sesuai: %v", cfg.SimulatorInterval)
+	}
 }
 
 func TestLoad_DefaultValues(t *testing.T) {
 	os.Setenv("DATABASE_URL", "postgres://user:pass@localhost:5432/testdb")
 	os.Unsetenv("PORT")
 	os.Unsetenv("APP_ENV")
+	os.Unsetenv("SIMULATOR_INTERVAL")
 	defer os.Unsetenv("DATABASE_URL")
 
 	cfg, err := config.Load()
@@ -49,6 +56,9 @@ func TestLoad_DefaultValues(t *testing.T) {
 	}
 	if cfg.AppEnv != "development" {
 		t.Errorf("AppEnv default seharusnya development, got: %s", cfg.AppEnv)
+	}
+	if cfg.SimulatorInterval != 45*time.Second {
+		t.Errorf("SimulatorInterval default seharusnya 45s, got: %v", cfg.SimulatorInterval)
 	}
 }
 

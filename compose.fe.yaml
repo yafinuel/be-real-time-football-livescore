@@ -41,6 +41,7 @@ services:
       - PORT=8080
       - DATABASE_URL=postgres://postgres:postgrespassword@postgres:5432/football_live_score?sslmode=disable
       - APP_ENV=development
+      - SIMULATOR_INTERVAL=45s
     ports:
       - "8080:8080"
     depends_on:

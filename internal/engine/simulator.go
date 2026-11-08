@@ -84,8 +84,8 @@ func (s *Simulator) simulateTick(ctx context.Context) {
 		}
 		m = updated
 
-		// 3. Peluang gol secara acak (30% peluang per tick)
-		if rand.Float32() < 0.30 {
+		// 3. Peluang gol secara acak (15% peluang per tick)
+		if rand.Float32() < 0.15 {
 			s.handleRandomGoal(ctx, m)
 		} else {
 			// Jika tidak ada gol, tetap siarkan update menit ke subscriber
