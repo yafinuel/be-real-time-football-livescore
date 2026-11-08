@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createMatch = `-- name: CreateMatch :one
+INSERT INTO matches (id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time
+`
+
+type CreateMatchParams struct {
+	ID         string
+	HomeTeamID string
+	AwayTeamID string
+	HomeScore  int32
+	AwayScore  int32
+	Status     string
+	Minute     int32
+	StartTime  pgtype.Timestamptz
+}
+
+func (q *Queries) CreateMatch(ctx context.Context, arg CreateMatchParams) (Match, error) {
+	row := q.db.QueryRow(ctx, createMatch,
+		arg.ID,
+		arg.HomeTeamID,
+		arg.AwayTeamID,
+		arg.HomeScore,
+		arg.AwayScore,
+		arg.Status,
+		arg.Minute,
+		arg.StartTime,
+	)
+	var i Match
+	err := row.Scan(
+		&i.ID,
+		&i.HomeTeamID,
+		&i.AwayTeamID,
+		&i.HomeScore,
+		&i.AwayScore,
+		&i.Status,
+		&i.Minute,
+		&i.StartTime,
+	)
+	return i, err
+}
+
 const getMatchByID = `-- name: GetMatchByID :one
 SELECT id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time
 FROM matches
@@ -36,7 +78,13 @@ func (q *Queries) GetMatchByID(ctx context.Context, id string) (Match, error) {
 const listMatches = `-- name: ListMatches :many
 SELECT id, home_team_id, away_team_id, home_score, away_score, status, minute, start_time
 FROM matches
-ORDER BY start_time DESC
+ORDER BY 
+    CASE 
+        WHEN status = 'LIVE' THEN 1 
+        WHEN status = 'NOT_STARTED' THEN 2 
+        ELSE 3 
+    END, 
+    start_time DESC
 `
 
 func (q *Queries) ListMatches(ctx context.Context) ([]Match, error) {

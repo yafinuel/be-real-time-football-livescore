@@ -68,6 +68,14 @@ func NewMockMatchRepository() *MockMatchRepository {
 	}
 }
 
+func (m *MockMatchRepository) Create(ctx context.Context, match *domain.Match) (*domain.Match, error) {
+	if m.ShouldFail {
+		return nil, errors.New("database error")
+	}
+	m.Matches[match.ID] = match
+	return match, nil
+}
+
 func (m *MockMatchRepository) GetByID(ctx context.Context, id string) (*domain.Match, error) {
 	if m.ShouldFail {
 		return nil, errors.New("database error")

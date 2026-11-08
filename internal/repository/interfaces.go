@@ -11,6 +11,7 @@ type TeamRepository interface {
 }
 
 type MatchRepository interface {
+	Create(ctx context.Context, match *domain.Match) (*domain.Match, error)
 	GetByID(ctx context.Context, id string) (*domain.Match, error)
 	List(ctx context.Context) ([]*domain.Match, error)
 	UpdateScore(ctx context.Context, id string, homeScore, awayScore int) (*domain.Match, error)
@@ -21,4 +22,3 @@ type EventRepository interface {
 	Create(ctx context.Context, event *domain.MatchEvent) (*domain.MatchEvent, error)
 	ListByMatchID(ctx context.Context, matchID string) ([]*domain.MatchEvent, error)
 }
-
