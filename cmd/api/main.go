@@ -10,6 +10,7 @@ import (
 	"football-live-score/internal/database"
 	db "football-live-score/internal/database/sqlc"
 	"football-live-score/internal/graph"
+	"football-live-score/internal/middleware"
 	"football-live-score/internal/pubsub"
 	"football-live-score/internal/repository/postgres"
 	"football-live-score/internal/service"
@@ -75,5 +76,7 @@ func main() {
 	log.Printf("Health check: http://localhost:%s/healthy", cfg.Port)
 	log.Printf("GraphQL Playground: http://localhost:%s/", cfg.Port)
 
-	log.Fatal(http.ListenAndServe(":"+cfg.Port, nil))
+	// Bungkus seluruh router HTTP dengan CORS middleware
+	corsHandler := middleware.Cors(http.DefaultServeMux)
+	log.Fatal(http.ListenAndServe(":"+cfg.Port, corsHandler))
 }
