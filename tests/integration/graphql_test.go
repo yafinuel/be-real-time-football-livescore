@@ -5,12 +5,16 @@ package integration
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"football-live-score/internal/graph"
+	"football-live-score/internal/graph/model"
+	"football-live-score/internal/pubsub"
 	"football-live-score/internal/service"
 	"football-live-score/tests/testhelper"
 
@@ -25,8 +29,8 @@ type graphQLResponse struct {
 	} `json:"errors"`
 }
 
-// newTestServer membuat HTTP test server GraphQL dengan mock repository
-func newTestServer() *httptest.Server {
+// newTestResolver membuat resolver lengkap dengan mock repo dan broker
+func newTestResolver() *graph.Resolver {
 	matchRepo := testhelper.NewMockMatchRepository()
 	teamRepo := testhelper.NewMockTeamRepository()
 	eventRepo := testhelper.NewMockEventRepository()
@@ -34,13 +38,19 @@ func newTestServer() *httptest.Server {
 	matchService := service.NewMatchService(matchRepo, teamRepo)
 	eventService := service.NewEventService(eventRepo, matchRepo)
 	teamService := service.NewTeamService(teamRepo)
+	broker := pubsub.NewBroker()
 
-	resolver := &graph.Resolver{
+	return &graph.Resolver{
 		MatchService: matchService,
 		EventService: eventService,
 		TeamService:  teamService,
+		Broker:       broker,
 	}
+}
 
+// newTestServer membuat HTTP test server GraphQL dengan mock repository
+func newTestServer() *httptest.Server {
+	resolver := newTestResolver()
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
 	return httptest.NewServer(srv)
 }
@@ -342,5 +352,78 @@ func TestMutation_AddMatchEvent_InvalidTeam(t *testing.T) {
 
 	if len(resp.Errors) == 0 {
 		t.Fatal("ekspektasi error ketika tim tidak bertanding di pertandingan ini")
+	}
+}
+
+// --- SUBSCRIPTION TESTS ---
+
+func TestSubscription_MatchUpdated(t *testing.T) {
+	resolver := newTestResolver()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	matchID := "match-1"
+	subChan, err := resolver.Subscription().MatchUpdated(ctx, &matchID)
+	if err != nil {
+		t.Fatalf("gagal subscribe matchUpdated: %v", err)
+	}
+
+	// Jalankan mutation UpdateScore
+	_, err = resolver.Mutation().UpdateScore(ctx, model.UpdateScoreInput{
+		MatchID:   "match-1",
+		HomeScore: 3,
+		AwayScore: 2,
+	})
+	if err != nil {
+		t.Fatalf("gagal update score: %v", err)
+	}
+
+	// Pastikan subscription menerima match yang telah di-update
+	select {
+	case updated := <-subChan:
+		if updated.ID != "match-1" {
+			t.Errorf("ekspektasi ID match-1, dapat: %s", updated.ID)
+		}
+		if updated.Score.Home != 3 || updated.Score.Away != 2 {
+			t.Errorf("skor update tidak sesuai: %v-%v", updated.Score.Home, updated.Score.Away)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout menunggu matchUpdated broadcast")
+	}
+}
+
+func TestSubscription_NewEventAdded(t *testing.T) {
+	resolver := newTestResolver()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	matchID := "match-1"
+	subChan, err := resolver.Subscription().NewEventAdded(ctx, matchID)
+	if err != nil {
+		t.Fatalf("gagal subscribe newEventAdded: %v", err)
+	}
+
+	// Jalankan mutation AddMatchEvent
+	_, err = resolver.Mutation().AddMatchEvent(ctx, "match-1", model.AddMatchEventInput{
+		Minute: 55,
+		Type:   model.EventTypeGoal,
+		TeamID: "team-1",
+		Player: "Gabriel Martinelli",
+	})
+	if err != nil {
+		t.Fatalf("gagal add match event: %v", err)
+	}
+
+	// Pastikan subscription menerima event baru
+	select {
+	case event := <-subChan:
+		if event.Player != "Gabriel Martinelli" {
+			t.Errorf("ekspektasi Gabriel Martinelli, dapat: %s", event.Player)
+		}
+		if event.Type != model.EventTypeGoal {
+			t.Errorf("ekspektasi GOAL, dapat: %s", event.Type)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timeout menunggu newEventAdded broadcast")
 	}
 }

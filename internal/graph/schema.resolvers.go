@@ -8,9 +8,10 @@ package graph
 import (
 	"context"
 	"fmt"
-	"football-live-score/internal/graph/model"
-	"football-live-score/internal/domain"
 	"time"
+
+	"football-live-score/internal/domain"
+	"football-live-score/internal/graph/model"
 )
 
 // Helper untuk konversi domain.Match ke model.Match lengkap beserta relasi dan events
@@ -78,6 +79,12 @@ func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateSc
 	if err != nil {
 		return nil, err
 	}
+
+	// Siarkan update pertandingan ke semua subscriber real-time
+	if r.Broker != nil {
+		r.Broker.PublishMatch(m)
+	}
+
 	return r.toGraphQLMatch(ctx, m), nil
 }
 
@@ -96,6 +103,11 @@ func (r *mutationResolver) AddMatchEvent(ctx context.Context, matchID string, in
 		return nil, err
 	}
 
+	// Siarkan event baru ke semua subscriber real-time
+	if r.Broker != nil {
+		r.Broker.PublishEvent(event)
+	}
+
 	return &model.MatchEvent{
 		ID:     event.ID,
 		Minute: event.Minute,
@@ -112,6 +124,12 @@ func (r *mutationResolver) UpdateMatchStatus(ctx context.Context, matchID string
 	if err != nil {
 		return nil, err
 	}
+
+	// Siarkan perubahan status pertandingan ke semua subscriber real-time
+	if r.Broker != nil {
+		r.Broker.PublishMatch(m)
+	}
+
 	return r.toGraphQLMatch(ctx, m), nil
 }
 
@@ -182,12 +200,52 @@ func (r *queryResolver) Teams(ctx context.Context) ([]*model.Team, error) {
 
 // MatchUpdated is the resolver for the matchUpdated field.
 func (r *subscriptionResolver) MatchUpdated(ctx context.Context, matchID *string) (<-chan *model.Match, error) {
-	panic(fmt.Errorf("not implemented: MatchUpdated - matchUpdated"))
+	if r.Broker == nil {
+		return nil, fmt.Errorf("broker belum diinisialisasi")
+	}
+
+	var targetID string
+	if matchID != nil {
+		targetID = *matchID
+	}
+
+	domainCh := r.Broker.SubscribeMatch(ctx, targetID)
+	out := make(chan *model.Match, 10)
+
+	go func() {
+		for m := range domainCh {
+			out <- r.toGraphQLMatch(ctx, m)
+		}
+		close(out)
+	}()
+
+	return out, nil
 }
 
 // NewEventAdded is the resolver for the newEventAdded field.
 func (r *subscriptionResolver) NewEventAdded(ctx context.Context, matchID string) (<-chan *model.MatchEvent, error) {
-	panic(fmt.Errorf("not implemented: NewEventAdded - newEventAdded"))
+	if r.Broker == nil {
+		return nil, fmt.Errorf("broker belum diinisialisasi")
+	}
+
+	domainCh := r.Broker.SubscribeEvent(ctx, matchID)
+	out := make(chan *model.MatchEvent, 10)
+
+	go func() {
+		for e := range domainCh {
+			out <- &model.MatchEvent{
+				ID:     e.ID,
+				Minute: e.Minute,
+				Type:   model.EventType(e.Type),
+				TeamID: e.TeamID,
+				Player: e.Player,
+				Detail: e.Detail,
+			}
+		}
+		close(out)
+	}()
+
+	return out, nil
 }
 
 // Mutation returns MutationResolver implementation.
