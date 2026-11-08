@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"football-live-score/internal/config"
 	"football-live-score/internal/database"
@@ -12,6 +13,7 @@ import (
 	"football-live-score/internal/pubsub"
 	"football-live-score/internal/repository/postgres"
 	"football-live-score/internal/service"
+	"football-live-score/internal/engine" 
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -49,11 +51,15 @@ func main() {
 	teamService := service.NewTeamService(teamRepo)
 	broker := pubsub.NewBroker()
 
-	// 5. Endpoint Health Check
+	// 5. Nyalakan Mock Match Simulator di background
+	sim := engine.NewSimulator(matchService, eventService, broker, 5*time.Second)
+	go sim.Start(ctx)
+
+	// 6. Endpoint Health Check
 	http.HandleFunc("/healthy", HealthHandler(dbPool))
 	http.HandleFunc("/healthy/", HealthHandler(dbPool))
 
-	// 6. GraphQL Server & Playground
+	// 7. GraphQL Server & Playground
 	resolver := &graph.Resolver{
 		MatchService: matchService,
 		EventService: eventService,
