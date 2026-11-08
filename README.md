@@ -1,6 +1,6 @@
 # ⚽ Real-Time Football Live Score Backend
 
-Backend API performa tinggi untuk aplikasi skor sepak bola real-time yang dibangun dengan **Go (Golang)**, **GraphQL (gqlgen)**, dan **PostgreSQL 17**. Dilengkapi dengan **In-Memory PubSub Broker** berbasis Go channels, simulasi pertandingan otomatis (*Mock Engine*), dan koneksi real-time via **WebSocket**.
+Backend API untuk aplikasi skor sepak bola real-time, dibangun dengan **Go**, **GraphQL (gqlgen)**, dan **PostgreSQL 17**. Dilengkapi dengan In-Memory PubSub Broker, simulasi pertandingan otomatis, dan koneksi real-time via WebSocket.
 
 Proyek ini siap digunakan oleh **Frontend Developer** yang ingin latihan integrasi GraphQL & WebSocket tanpa perlu mengoding backend sendiri.
 
@@ -8,10 +8,7 @@ Proyek ini siap digunakan oleh **Frontend Developer** yang ingin latihan integra
 
 ## 🚀 Quick Start untuk Frontend Developer (Tanpa Perlu Go!)
 
-Kamu tidak perlu menginstal Go, compiler, atau mengerti kodingan backend. Cukup jalankan Docker:
-
 ```bash
-# 1. Jalankan backend dari image resmi GHCR
 docker compose -f compose.fe.yaml up -d
 ```
 
@@ -21,7 +18,6 @@ Setelah container berjalan:
 - ⚡ **WebSocket Endpoint (Subscription)**: `ws://localhost:8080/query`
 - 🩺 **Health Check**: `http://localhost:8080/healthy`
 
-Untuk mematikan container:
 ```bash
 docker compose -f compose.fe.yaml down
 ```
@@ -31,13 +27,13 @@ docker compose -f compose.fe.yaml down
 ## 🛠️ Quick Start untuk Backend Developer
 
 ```bash
-# 1. Jalankan database dan API dalam mode development (live reload)
+# Jalankan database dan API dalam mode development (live reload)
 docker compose up -d
 
-# 2. Menjalankan seluruh test (Unit & Integration)
+# Menjalankan seluruh test (Unit & Integration)
 docker compose run --rm api go test ./... -v
 
-# 3. Menjalankan linter
+# Menjalankan linter
 docker compose run --rm api go vet ./...
 ```
 
@@ -45,11 +41,11 @@ docker compose run --rm api go vet ./...
 
 ## 📡 Panduan GraphQL API
 
-CORS sudah diaktifkan secara global (`*`), sehingga kamu bisa menembak API ini dari `localhost:3000`, `localhost:5173`, atau port manapun!
+CORS sudah diaktifkan secara global, sehingga kamu bisa memanggil API ini dari `localhost:3000`, `localhost:5173`, atau port manapun.
 
 ### 1. Queries (Mengambil Data)
 
-#### Mengambil Semua Pertandingan
+#### Semua Pertandingan
 ```graphql
 query GetMatches {
   matches {
@@ -77,7 +73,9 @@ query GetMatches {
 }
 ```
 
-#### Mengambil Pertandingan yang Sedang LIVE Saja
+> Urutan hasil: `LIVE` → `NOT_STARTED` → `FINISHED`
+
+#### Pertandingan yang Sedang LIVE
 ```graphql
 query GetLiveMatches {
   liveMatches {
@@ -87,17 +85,13 @@ query GetLiveMatches {
       home
       away
     }
-    homeTeam {
-      name
-    }
-    awayTeam {
-      name
-    }
+    homeTeam { name }
+    awayTeam { name }
   }
 }
 ```
 
-#### Mengambil Detail 1 Pertandingan Beserta Timeline Events
+#### Detail 1 Pertandingan Beserta Timeline Events
 ```graphql
 query GetMatchDetail {
   match(id: "match-1") {
@@ -119,42 +113,40 @@ query GetMatchDetail {
 }
 ```
 
+#### Semua Tim
+```graphql
+query GetTeams {
+  teams {
+    id
+    name
+    shortName
+    logoUrl
+  }
+}
+```
+
 ---
 
-### 2. Subscriptions (Mendengarkan Update Real-Time)
+### 2. Mutations (Simulasi Manual / Admin)
 
-#### Mendengarkan Update Skor & Menit Pertandingan Tertentu
+#### Membuat Pertandingan Baru
 ```graphql
-subscription OnMatchUpdated {
-  matchUpdated(matchId: "match-1") {
+mutation CreateMatch {
+  createMatch(input: {
+    homeTeamId: "team-ars"
+    awayTeamId: "team-che"
+    startTime: "2026-12-01T20:00:00Z"
+  }) {
     id
-    minute
     status
-    score {
-      home
-      away
-    }
-  }
-}
-```
-*(Kosongkan parameter `matchId` untuk mendengarkan update dari **semua** pertandingan sekaligus).*
-
-#### Mendengarkan Event Baru (Gol, Kartu Kuning/Merah)
-```graphql
-subscription OnNewEvent {
-  newEventAdded(matchId: "match-1") {
-    id
-    minute
-    type
-    player
-    detail
+    startTime
+    homeTeam { name }
+    awayTeam { name }
   }
 }
 ```
 
----
-
-### 3. Mutations (Admin / Simulasi Manual)
+> `startTime` menggunakan format **ISO-8601 / RFC3339** (`2006-01-02T15:04:05Z`).
 
 #### Update Skor Pertandingan
 ```graphql
@@ -173,7 +165,7 @@ mutation UpdateScore {
 }
 ```
 
-#### Menambah Event Gol / Kartu
+#### Tambah Event (Gol / Kartu)
 ```graphql
 mutation AddGoalEvent {
   addMatchEvent(
@@ -193,8 +185,9 @@ mutation AddGoalEvent {
 }
 ```
 
-#### Mengubah Status Pertandingan
-Status yang valid: `NOT_STARTED`, `LIVE`, `HALFTIME`, `FINISHED`, `POSTPONED`, `CANCELLED`.
+> `type` yang valid: `GOAL`, `YELLOW_CARD`, `RED_CARD`, `SUBSTITUTION`
+
+#### Ubah Status Pertandingan
 ```graphql
 mutation StartMatch {
   updateMatchStatus(matchId: "match-3", status: LIVE, minute: 1) {
@@ -205,11 +198,47 @@ mutation StartMatch {
 }
 ```
 
+> `status` yang valid: `NOT_STARTED`, `LIVE`, `HALFTIME`, `FINISHED`, `POSTPONED`, `CANCELLED`
+
+---
+
+### 3. Subscriptions (Real-Time via WebSocket)
+
+#### Update Skor & Menit Pertandingan Tertentu
+```graphql
+subscription OnMatchUpdated {
+  matchUpdated(matchId: "match-1") {
+    id
+    minute
+    status
+    score {
+      home
+      away
+    }
+  }
+}
+```
+
+> Kosongkan `matchId` untuk mendengarkan update dari **semua** pertandingan sekaligus.
+
+#### Event Baru (Gol, Kartu)
+```graphql
+subscription OnNewEvent {
+  newEventAdded(matchId: "match-1") {
+    id
+    minute
+    type
+    player
+    detail
+  }
+}
+```
+
 ---
 
 ## 💻 Contoh Integrasi di Frontend (React + Apollo Client)
 
-Backend ini mendukung protokol modern **`graphql-ws`**:
+Backend mendukung protokol modern **`graphql-ws`**:
 
 ```bash
 npm install @apollo/client graphql graphql-ws
@@ -221,19 +250,16 @@ import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { createClient } from 'graphql-ws';
 import { getMainDefinition } from '@apollo/client/utilities';
 
-// 1. HTTP Link untuk Query & Mutation
 const httpLink = new HttpLink({
   uri: 'http://localhost:8080/query',
 });
 
-// 2. WebSocket Link untuk Subscription
 const wsLink = new GraphQLWsLink(
   createClient({
     url: 'ws://localhost:8080/query',
   })
 );
 
-// 3. Split link berdasarkan tipe operasi
 const splitLink = split(
   ({ query }) => {
     const definition = getMainDefinition(query);
@@ -256,12 +282,18 @@ export const client = new ApolloClient({
 
 ## 🤖 Mock Match Engine (Simulator Otomatis)
 
-Backend memiliki background worker yang otomatis berjalan setiap **5 detik**:
-- Mencari pertandingan yang berstatus **`LIVE`**.
-- Menambah menit pertandingan secara bertahap.
-- Memiliki peluang acak mencetak gol dan membuat event gol baru.
-- Menyiarkan perubahan secara instan melalui WebSocket ke semua client yang sedang subscribe.
-- Jika pertandingan mencapai menit 90, statusnya otomatis berubah menjadi `FINISHED`.
+Background worker berjalan otomatis setiap **45 detik** (dapat dikonfigurasi via env var `SIMULATOR_INTERVAL`):
+- Mencari pertandingan berstatus **`LIVE`**
+- Menambah menit pertandingan secara bertahap
+- Memiliki peluang acak mencetak gol (15% per tick)
+- Menyiarkan perubahan secara instan via WebSocket ke semua subscriber
+- Pertandingan mencapai menit 90 → otomatis `FINISHED`
+
+Untuk mengubah kecepatan simulasi, ubah nilai di `.env`:
+```env
+SIMULATOR_INTERVAL=30s   # 30 detik
+SIMULATOR_INTERVAL=1m    # 1 menit
+```
 
 ---
 
