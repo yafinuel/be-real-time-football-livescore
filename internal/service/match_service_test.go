@@ -24,7 +24,6 @@ func TestMatchService_ListMatches_Success(t *testing.T) {
 		t.Fatal("ekspektasi setidaknya 1 pertandingan, got 0")
 	}
 
-	// Pastikan relasi tim ter-hydrate
 	for _, m := range matches {
 		if m.HomeTeam == nil {
 			t.Errorf("HomeTeam seharusnya ter-hydrate untuk match ID: %s", m.ID)
@@ -134,7 +133,6 @@ func TestMatchService_UpdateStatus_Success(t *testing.T) {
 
 func TestMatchService_UpdateStatus_CannotChangeFinished(t *testing.T) {
 	matchRepo := testhelper.NewMockMatchRepository()
-	// Set match menjadi FINISHED
 	matchRepo.Matches["match-1"].Status = domain.MatchStatusFinished
 	teamRepo := testhelper.NewMockTeamRepository()
 	svc := service.NewMatchService(matchRepo, teamRepo)
@@ -147,7 +145,6 @@ func TestMatchService_UpdateStatus_CannotChangeFinished(t *testing.T) {
 
 func TestMatchService_GetLiveMatches(t *testing.T) {
 	matchRepo := testhelper.NewMockMatchRepository()
-	// Match-1 sudah berstatus LIVE
 	teamRepo := testhelper.NewMockTeamRepository()
 	svc := service.NewMatchService(matchRepo, teamRepo)
 
@@ -207,13 +204,11 @@ func TestMatchService_CreateMatch_TeamNotFound(t *testing.T) {
 	teamRepo := testhelper.NewMockTeamRepository()
 	svc := service.NewMatchService(matchRepo, teamRepo)
 
-	// Tim kandang tidak ada
 	_, err := svc.CreateMatch(context.Background(), "team-tidak-ada", "team-2", time.Now())
 	if err == nil {
 		t.Fatal("ekspektasi error ketika tim kandang tidak ditemukan")
 	}
 
-	// Tim tandang tidak ada
 	_, err = svc.CreateMatch(context.Background(), "team-1", "team-tidak-ada", time.Now())
 	if err == nil {
 		t.Fatal("ekspektasi error ketika tim tandang tidak ditemukan")

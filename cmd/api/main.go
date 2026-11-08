@@ -20,7 +20,6 @@ import (
 )
 
 func main() {
-	// 1. Load konfigurasi dari environment variable
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Gagal memuat konfigurasi: %v", err)
@@ -28,19 +27,16 @@ func main() {
 
 	ctx := context.Background()
 
-	// 2. Inisialisasi Database Pool
 	dbPool, err := database.NewPostgresPool(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("Gagal inisialisasi database: %v", err)
 	}
 	defer dbPool.Close()
 
-	// 3. Jalankan Migrasi Otomatis
 	if err := database.RunMigrations(ctx, dbPool); err != nil {
 		log.Fatalf("Gagal menjalankan migrasi: %v", err)
 	}
 
-	// 4. Rakit Layer Arsitektur (Clean Architecture)
 	queries := db.New(dbPool)
 	teamRepo := postgres.NewTeamRepository(queries)
 	matchRepo := postgres.NewMatchRepository(queries)
@@ -51,15 +47,12 @@ func main() {
 	teamService := service.NewTeamService(teamRepo)
 	broker := pubsub.NewBroker()
 
-	// 5. Nyalakan Mock Match Simulator di background
 	sim := engine.NewSimulator(matchService, eventService, broker, cfg.SimulatorInterval)
 	go sim.Start(ctx)
 
-	// 6. Endpoint Health Check
 	http.HandleFunc("/healthy", HealthHandler(dbPool))
 	http.HandleFunc("/healthy/", HealthHandler(dbPool))
 
-	// 7. GraphQL Server & Playground
 	resolver := &graph.Resolver{
 		MatchService: matchService,
 		EventService: eventService,
@@ -75,7 +68,6 @@ func main() {
 	log.Printf("Health check: http://localhost:%s/healthy", cfg.Port)
 	log.Printf("GraphQL Playground: http://localhost:%s/", cfg.Port)
 
-	// Bungkus seluruh router HTTP dengan CORS middleware
 	corsHandler := middleware.Cors(http.DefaultServeMux)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, corsHandler))
 }
