@@ -20,6 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     container_name: football-live-score-api
     working_dir: /app
     environment:
