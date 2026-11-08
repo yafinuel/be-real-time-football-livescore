@@ -70,7 +70,22 @@ func (r *Resolver) toGraphQLMatch(ctx context.Context, m *domain.Match) *model.M
 
 // CreateMatch is the resolver for the createMatch field.
 func (r *mutationResolver) CreateMatch(ctx context.Context, input model.CreateMatchInput) (*model.Match, error) {
-	panic(fmt.Errorf("not implemented: CreateMatch - createMatch"))
+	startTime, err := time.Parse(time.RFC3339, input.StartTime)
+	if err != nil {
+		return nil, fmt.Errorf("format startTime tidak valid (gunakan RFC3339/ISO-8601): %w", err)
+	}
+
+	m, err := r.MatchService.CreateMatch(ctx, input.HomeTeamID, input.AwayTeamID, startTime)
+	if err != nil {
+		return nil, err
+	}
+
+	// Siarkan match baru ke subscriber jika ada
+	if r.Broker != nil {
+		r.Broker.PublishMatch(m)
+	}
+
+	return r.toGraphQLMatch(ctx, m), nil
 }
 
 // UpdateScore is the resolver for the updateScore field.

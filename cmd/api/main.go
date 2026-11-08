@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 	"net/http"
-	"time"
 
 	"football-live-score/internal/config"
 	"football-live-score/internal/database"
@@ -14,7 +13,7 @@ import (
 	"football-live-score/internal/pubsub"
 	"football-live-score/internal/repository/postgres"
 	"football-live-score/internal/service"
-	"football-live-score/internal/engine" 
+	"football-live-score/internal/engine"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -53,7 +52,7 @@ func main() {
 	broker := pubsub.NewBroker()
 
 	// 5. Nyalakan Mock Match Simulator di background
-	sim := engine.NewSimulator(matchService, eventService, broker, 5*time.Second)
+	sim := engine.NewSimulator(matchService, eventService, broker, cfg.SimulatorInterval)
 	go sim.Start(ctx)
 
 	// 6. Endpoint Health Check
@@ -72,7 +71,7 @@ func main() {
 	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
 	http.Handle("/query", srv)
 
-	log.Printf("Server siap di port :%s (env: %s)", cfg.Port, cfg.AppEnv)
+	log.Printf("Server siap di port :%s (env: %s, simulator interval: %v)", cfg.Port, cfg.AppEnv, cfg.SimulatorInterval)
 	log.Printf("Health check: http://localhost:%s/healthy", cfg.Port)
 	log.Printf("GraphQL Playground: http://localhost:%s/", cfg.Port)
 

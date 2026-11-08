@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"football-live-score/internal/domain"
 	"football-live-score/internal/service"
@@ -159,5 +160,62 @@ func TestMatchService_GetLiveMatches(t *testing.T) {
 		if m.Status != domain.MatchStatusLive {
 			t.Errorf("semua match dari GetLiveMatches seharusnya LIVE, got: %s", m.Status)
 		}
+	}
+}
+
+func TestMatchService_CreateMatch_Success(t *testing.T) {
+	matchRepo := testhelper.NewMockMatchRepository()
+	teamRepo := testhelper.NewMockTeamRepository()
+	svc := service.NewMatchService(matchRepo, teamRepo)
+
+	startTime := time.Now().Add(24 * time.Hour)
+	match, err := svc.CreateMatch(context.Background(), "team-1", "team-2", startTime)
+	if err != nil {
+		t.Fatalf("ekspektasi sukses, got error: %v", err)
+	}
+
+	if match == nil {
+		t.Fatal("ekspektasi match tidak nil")
+	}
+	if match.HomeTeamID != "team-1" || match.AwayTeamID != "team-2" {
+		t.Errorf("ID tim tidak cocok: home=%s, away=%s", match.HomeTeamID, match.AwayTeamID)
+	}
+	if match.Status != domain.MatchStatusNotStarted {
+		t.Errorf("ekspektasi status NOT_STARTED, got: %s", match.Status)
+	}
+	if match.HomeScore != 0 || match.AwayScore != 0 {
+		t.Errorf("ekspektasi skor awal 0-0, got: %d-%d", match.HomeScore, match.AwayScore)
+	}
+	if match.HomeTeam == nil || match.AwayTeam == nil {
+		t.Error("HomeTeam dan AwayTeam seharusnya terisi/ter-hydrate")
+	}
+}
+
+func TestMatchService_CreateMatch_SameTeam(t *testing.T) {
+	matchRepo := testhelper.NewMockMatchRepository()
+	teamRepo := testhelper.NewMockTeamRepository()
+	svc := service.NewMatchService(matchRepo, teamRepo)
+
+	_, err := svc.CreateMatch(context.Background(), "team-1", "team-1", time.Now())
+	if err == nil {
+		t.Fatal("ekspektasi error ketika tim kandang dan tandang sama")
+	}
+}
+
+func TestMatchService_CreateMatch_TeamNotFound(t *testing.T) {
+	matchRepo := testhelper.NewMockMatchRepository()
+	teamRepo := testhelper.NewMockTeamRepository()
+	svc := service.NewMatchService(matchRepo, teamRepo)
+
+	// Tim kandang tidak ada
+	_, err := svc.CreateMatch(context.Background(), "team-tidak-ada", "team-2", time.Now())
+	if err == nil {
+		t.Fatal("ekspektasi error ketika tim kandang tidak ditemukan")
+	}
+
+	// Tim tandang tidak ada
+	_, err = svc.CreateMatch(context.Background(), "team-1", "team-tidak-ada", time.Now())
+	if err == nil {
+		t.Fatal("ekspektasi error ketika tim tandang tidak ditemukan")
 	}
 }

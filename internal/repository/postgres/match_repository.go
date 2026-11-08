@@ -16,6 +16,24 @@ func NewMatchRepository(q *db.Queries) *MatchRepository {
 	return &MatchRepository{q: q}
 }
 
+func (r *MatchRepository) Create(ctx context.Context, match *domain.Match) (*domain.Match, error) {
+	row, err := r.q.CreateMatch(ctx, db.CreateMatchParams{
+		ID:         match.ID,
+		HomeTeamID: match.HomeTeamID,
+		AwayTeamID: match.AwayTeamID,
+		HomeScore:  int32(match.HomeScore),
+		AwayScore:  int32(match.AwayScore),
+		Status:     string(match.Status),
+		Minute:     int32(match.Minute),
+		StartTime:  pgtype.Timestamptz{Time: match.StartTime, Valid: true},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return toDomainMatch(&row), nil
+}
+
 func (r *MatchRepository) GetByID(ctx context.Context, id string) (*domain.Match, error) {
 	row, err := r.q.GetMatchByID(ctx, id)
 	if err != nil {

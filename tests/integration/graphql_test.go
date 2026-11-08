@@ -355,6 +355,83 @@ func TestMutation_AddMatchEvent_InvalidTeam(t *testing.T) {
 	}
 }
 
+func TestMutation_CreateMatch_Success(t *testing.T) {
+	server := newTestServer()
+	defer server.Close()
+
+	resp := doGraphQL(t, server, `mutation {
+		createMatch(input: {
+			homeTeamId: "team-1"
+			awayTeamId: "team-2"
+			startTime: "2026-12-01T20:00:00Z"
+		}) {
+			id
+			status
+			score { home away }
+			homeTeam { id name }
+			awayTeam { id name }
+		}
+	}`)
+
+	if len(resp.Errors) > 0 {
+		t.Fatalf("mutation createMatch gagal: %v", resp.Errors[0].Message)
+	}
+
+	result, ok := resp.Data["createMatch"].(map[string]interface{})
+	if !ok {
+		t.Fatal("respons createMatch bukan object")
+	}
+	if result["status"] != "NOT_STARTED" {
+		t.Errorf("ekspektasi status NOT_STARTED, got: %v", result["status"])
+	}
+	homeTeam := result["homeTeam"].(map[string]interface{})
+	if homeTeam["id"] != "team-1" {
+		t.Errorf("ekspektasi homeTeam id team-1, got: %v", homeTeam["id"])
+	}
+	awayTeam := result["awayTeam"].(map[string]interface{})
+	if awayTeam["id"] != "team-2" {
+		t.Errorf("ekspektasi awayTeam id team-2, got: %v", awayTeam["id"])
+	}
+}
+
+func TestMutation_CreateMatch_SameTeam(t *testing.T) {
+	server := newTestServer()
+	defer server.Close()
+
+	resp := doGraphQL(t, server, `mutation {
+		createMatch(input: {
+			homeTeamId: "team-1"
+			awayTeamId: "team-1"
+			startTime: "2026-12-01T20:00:00Z"
+		}) {
+			id
+		}
+	}`)
+
+	if len(resp.Errors) == 0 {
+		t.Fatal("ekspektasi error ketika homeTeam dan awayTeam sama")
+	}
+}
+
+func TestMutation_CreateMatch_InvalidTime(t *testing.T) {
+	server := newTestServer()
+	defer server.Close()
+
+	resp := doGraphQL(t, server, `mutation {
+		createMatch(input: {
+			homeTeamId: "team-1"
+			awayTeamId: "team-2"
+			startTime: "bukan-waktu-valid"
+		}) {
+			id
+		}
+	}`)
+
+	if len(resp.Errors) == 0 {
+		t.Fatal("ekspektasi error ketika startTime tidak valid")
+	}
+}
+
 // --- SUBSCRIPTION TESTS ---
 
 func TestSubscription_MatchUpdated(t *testing.T) {

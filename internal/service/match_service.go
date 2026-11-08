@@ -6,6 +6,7 @@ import (
 	"football-live-score/internal/repository"
 	"errors"
 	"fmt"
+	"time"
 )
 
 type MatchService struct {
@@ -18,6 +19,49 @@ func NewMatchService(matchRepo repository.MatchRepository, teamRepo repository.T
 		matchRepo: matchRepo,
 		teamRepo:  teamRepo,
 	}
+}
+
+// CreateMatch membuat pertandingan baru dengan validasi tim
+func (s *MatchService) CreateMatch(ctx context.Context, homeTeamID, awayTeamID string, startTime time.Time) (*domain.Match, error) {
+	// 1. Validasi: Tim kandang dan tandang tidak boleh sama
+	if homeTeamID == awayTeamID {
+		return nil, errors.New("tim tuan rumah dan tim tamu tidak boleh sama")
+	}
+
+	// 2. Validasi: Kedua tim harus terdaftar
+	homeTeam, err := s.teamRepo.GetByID(ctx, homeTeamID)
+	if err != nil {
+		return nil, fmt.Errorf("tim tuan rumah tidak ditemukan: %w", err)
+	}
+
+	awayTeam, err := s.teamRepo.GetByID(ctx, awayTeamID)
+	if err != nil {
+		return nil, fmt.Errorf("tim tamu tidak ditemukan: %w", err)
+	}
+
+	// 3. Buat entity Match baru
+	newMatch := &domain.Match{
+		ID:         fmt.Sprintf("match-%d", time.Now().UnixNano()),
+		HomeTeamID: homeTeamID,
+		AwayTeamID: awayTeamID,
+		HomeScore:  0,
+		AwayScore:  0,
+		Status:     domain.MatchStatusNotStarted,
+		Minute:     0,
+		StartTime:  startTime,
+		HomeTeam:   homeTeam,
+		AwayTeam:   awayTeam,
+	}
+
+	// 4. Simpan ke repository
+	created, err := s.matchRepo.Create(ctx, newMatch)
+	if err != nil {
+		return nil, fmt.Errorf("gagal membuat pertandingan: %w", err)
+	}
+
+	created.HomeTeam = homeTeam
+	created.AwayTeam = awayTeam
+	return created, nil
 }
 
 // ListMatches mengambil pertandingan dan merakit informasi HomeTeam & AwayTeam
