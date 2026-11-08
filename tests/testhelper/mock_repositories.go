@@ -7,8 +7,6 @@ import (
 	"football-live-score/internal/domain"
 )
 
-// --- Mock Team Repository ---
-
 type MockTeamRepository struct {
 	Teams  map[string]*domain.Team
 	ShouldFail bool
@@ -44,8 +42,6 @@ func (m *MockTeamRepository) List(ctx context.Context) ([]*domain.Team, error) {
 	}
 	return result, nil
 }
-
-// --- Mock Match Repository ---
 
 type MockMatchRepository struct {
 	Matches    map[string]*domain.Match
@@ -125,8 +121,6 @@ func (m *MockMatchRepository) UpdateStatus(ctx context.Context, id string, statu
 	}
 	return match, nil
 }
-
-// --- Mock Event Repository ---
 
 type MockEventRepository struct {
 	Events     []*domain.MatchEvent

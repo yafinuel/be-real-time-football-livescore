@@ -88,7 +88,6 @@ func (r *MatchRepository) UpdateStatus(ctx context.Context, id string, status do
 	return toDomainMatch(&row), nil
 }
 
-// Helper untuk konversi struct sqlc -> domain model
 func toDomainMatch(m *db.Match) *domain.Match {
 	return &domain.Match{
 		ID:         m.ID,

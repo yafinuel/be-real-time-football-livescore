@@ -20,7 +20,6 @@ func TestSimulator_SimulateTick_IncrementMinute(t *testing.T) {
 	eventService := service.NewEventService(eventRepo, matchRepo)
 	broker := pubsub.NewBroker()
 
-	// Pastikan match-1 berstatus LIVE dan menit 10
 	matchRepo.Matches["match-1"].Status = domain.MatchStatusLive
 	matchRepo.Matches["match-1"].Minute = 10
 
@@ -48,7 +47,6 @@ func TestSimulator_SimulateTick_FinishAt90(t *testing.T) {
 	eventService := service.NewEventService(eventRepo, matchRepo)
 	broker := pubsub.NewBroker()
 
-	// Set match-1 di menit 90
 	matchRepo.Matches["match-1"].Status = domain.MatchStatusLive
 	matchRepo.Matches["match-1"].Minute = 90
 
@@ -89,7 +87,6 @@ func TestSimulator_StartAndStop(t *testing.T) {
 
 	select {
 	case <-done:
-		// Berhasil berhenti saat context selesai
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("simulator gagal berhenti setelah timeout")
 	}
