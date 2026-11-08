@@ -19,7 +19,6 @@ type Simulator struct {
 	interval     time.Duration
 }
 
-// NewSimulator membuat instance simulator baru
 func NewSimulator(
 	matchService *service.MatchService,
 	eventService *service.EventService,
@@ -34,7 +33,6 @@ func NewSimulator(
 	}
 }
 
-// Start menjalankan loop simulasi di background sampai context dibatalkan
 func (s *Simulator) Start(ctx context.Context) {
 	ticker := time.NewTicker(s.interval)
 	defer ticker.Stop()
@@ -52,7 +50,6 @@ func (s *Simulator) Start(ctx context.Context) {
 	}
 }
 
-// simulateTick mengeksekusi 1 langkah simulasi untuk semua pertandingan LIVE
 func (s *Simulator) simulateTick(ctx context.Context) {
 	liveMatches, err := s.matchService.GetLiveMatches(ctx)
 	if err != nil {
@@ -61,11 +58,10 @@ func (s *Simulator) simulateTick(ctx context.Context) {
 	}
 
 	if len(liveMatches) == 0 {
-		return // Tidak ada pertandingan LIVE saat ini
+		return
 	}
 
 	for _, m := range liveMatches {
-		// 1. Jika sudah menit >= 90, selesaikan pertandingan
 		if m.Minute >= 90 {
 			finished, err := s.matchService.UpdateStatus(ctx, m.ID, domain.MatchStatusFinished, &m.Minute)
 			if err == nil && s.broker != nil {
@@ -75,7 +71,6 @@ func (s *Simulator) simulateTick(ctx context.Context) {
 			continue
 		}
 
-		// 2. Tambah menit pertandingan (+1 atau +2 menit)
 		newMinute := m.Minute + 1
 		updated, err := s.matchService.UpdateStatus(ctx, m.ID, domain.MatchStatusLive, &newMinute)
 		if err != nil {
@@ -84,11 +79,9 @@ func (s *Simulator) simulateTick(ctx context.Context) {
 		}
 		m = updated
 
-		// 3. Peluang gol secara acak (15% peluang per tick)
 		if rand.Float32() < 0.15 {
 			s.handleRandomGoal(ctx, m)
 		} else {
-			// Jika tidak ada gol, tetap siarkan update menit ke subscriber
 			if s.broker != nil {
 				s.broker.PublishMatch(m)
 			}
@@ -122,21 +115,18 @@ func (s *Simulator) handleRandomGoal(ctx context.Context, m *domain.Match) {
 		}
 	}
 
-	// Update skor di database
 	scoredMatch, err := s.matchService.UpdateScore(ctx, m.ID, newHomeScore, newAwayScore)
 	if err != nil {
 		log.Printf("[Simulator] Gagal update skor: %v", err)
 		return
 	}
 
-	// Simpan event gol di database
 	detailMsg := "Gol hasil tembakan terarah!"
 	event, err := s.eventService.AddEvent(ctx, m.ID, m.Minute, domain.EventTypeGoal, teamID, player, &detailMsg)
 	if err != nil {
 		log.Printf("[Simulator] Gagal mencatat event gol: %v", err)
 	}
 
-	// Broadcast ke WebSocket real-time!
 	if s.broker != nil {
 		s.broker.PublishMatch(scoredMatch)
 		if event != nil {

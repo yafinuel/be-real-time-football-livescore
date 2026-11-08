@@ -14,7 +14,6 @@ import (
 	"football-live-score/internal/graph/model"
 )
 
-// Helper untuk konversi domain.Match ke model.Match lengkap beserta relasi dan events
 func (r *Resolver) toGraphQLMatch(ctx context.Context, m *domain.Match) *model.Match {
 	if m == nil {
 		return nil
@@ -80,7 +79,6 @@ func (r *mutationResolver) CreateMatch(ctx context.Context, input model.CreateMa
 		return nil, err
 	}
 
-	// Siarkan match baru ke subscriber jika ada
 	if r.Broker != nil {
 		r.Broker.PublishMatch(m)
 	}
@@ -95,7 +93,6 @@ func (r *mutationResolver) UpdateScore(ctx context.Context, input model.UpdateSc
 		return nil, err
 	}
 
-	// Siarkan update pertandingan ke semua subscriber real-time
 	if r.Broker != nil {
 		r.Broker.PublishMatch(m)
 	}
@@ -118,7 +115,6 @@ func (r *mutationResolver) AddMatchEvent(ctx context.Context, matchID string, in
 		return nil, err
 	}
 
-	// Siarkan event baru ke semua subscriber real-time
 	if r.Broker != nil {
 		r.Broker.PublishEvent(event)
 	}
@@ -140,7 +136,6 @@ func (r *mutationResolver) UpdateMatchStatus(ctx context.Context, matchID string
 		return nil, err
 	}
 
-	// Siarkan perubahan status pertandingan ke semua subscriber real-time
 	if r.Broker != nil {
 		r.Broker.PublishMatch(m)
 	}

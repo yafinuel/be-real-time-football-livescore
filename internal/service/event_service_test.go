@@ -44,7 +44,7 @@ func TestEventService_AddEvent_InvalidMinute(t *testing.T) {
 	_, err := svc.AddEvent(
 		context.Background(),
 		"match-1",
-		-5, // menit tidak valid
+		-5,
 		domain.EventTypeGoal,
 		"team-1",
 		"Bukayo Saka",
@@ -64,7 +64,7 @@ func TestEventService_AddEvent_MinuteTooHigh(t *testing.T) {
 	_, err := svc.AddEvent(
 		context.Background(),
 		"match-1",
-		200, // menit lebih dari 130
+		200,
 		domain.EventTypeGoal,
 		"team-1",
 		"Bukayo Saka",
@@ -106,7 +106,7 @@ func TestEventService_AddEvent_InvalidTeam(t *testing.T) {
 		"match-1",
 		23,
 		domain.EventTypeGoal,
-		"team-999", // tim tidak bertanding di match ini
+		"team-999",
 		"Random Player",
 		nil,
 	)
@@ -121,7 +121,6 @@ func TestEventService_GetEventsByMatchID(t *testing.T) {
 	matchRepo := testhelper.NewMockMatchRepository()
 	svc := service.NewEventService(eventRepo, matchRepo)
 
-	// Tambahkan 2 event terlebih dahulu
 	svc.AddEvent(context.Background(), "match-1", 23, domain.EventTypeGoal, "team-1", "Saka", nil)
 	svc.AddEvent(context.Background(), "match-1", 50, domain.EventTypeYellowCard, "team-2", "Reece James", nil)
 

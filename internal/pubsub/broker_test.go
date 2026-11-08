@@ -42,7 +42,6 @@ func TestBroker_SubscribeGlobalMatch(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Subscriber global (matchID kosong) harus menerima update pertandingan apapun
 	globalChan := broker.SubscribeMatch(ctx, "")
 
 	match := &domain.Match{
@@ -99,10 +98,8 @@ func TestBroker_UnsubscribeOnContextCancel(t *testing.T) {
 
 	matchChan := broker.SubscribeMatch(ctx, "match-1")
 
-	// Batalkan context untuk trigger auto-cleanup
 	cancel()
 
-	// Beri sedikit jeda agar goroutine cleanup selesai dijalankan
 	time.Sleep(50 * time.Millisecond)
 
 	broker.mu.RLock()
@@ -113,7 +110,6 @@ func TestBroker_UnsubscribeOnContextCancel(t *testing.T) {
 		t.Errorf("subscriber harusnya sudah dihapus dari map, tersisa: %d", subsLen)
 	}
 
-	// Channel harus sudah tertutup
 	_, ok := <-matchChan
 	if ok {
 		t.Error("channel harusnya tertutup setelah unsubscribe")
@@ -127,7 +123,6 @@ func TestBroker_ConcurrentSafety(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	// Jalankan banyak subscriber secara paralel
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
 		go func() {
@@ -140,7 +135,6 @@ func TestBroker_ConcurrentSafety(t *testing.T) {
 		}()
 	}
 
-	// Jalankan banyak publisher secara paralel
 	for i := 0; i < 20; i++ {
 		wg.Add(1)
 		go func(score int) {

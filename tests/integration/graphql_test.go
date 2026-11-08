@@ -29,7 +29,6 @@ type graphQLResponse struct {
 	} `json:"errors"`
 }
 
-// newTestResolver membuat resolver lengkap dengan mock repo dan broker
 func newTestResolver() *graph.Resolver {
 	matchRepo := testhelper.NewMockMatchRepository()
 	teamRepo := testhelper.NewMockTeamRepository()
@@ -48,14 +47,12 @@ func newTestResolver() *graph.Resolver {
 	}
 }
 
-// newTestServer membuat HTTP test server GraphQL dengan mock repository
 func newTestServer() *httptest.Server {
 	resolver := newTestResolver()
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
 	return httptest.NewServer(srv)
 }
 
-// doGraphQL mengirim request GraphQL ke server dan mengembalikan respons
 func doGraphQL(t *testing.T, server *httptest.Server, query string) graphQLResponse {
 	t.Helper()
 	body, _ := json.Marshal(map[string]string{"query": query})
@@ -71,8 +68,6 @@ func doGraphQL(t *testing.T, server *httptest.Server, query string) graphQLRespo
 	}
 	return result
 }
-
-// --- QUERY TESTS ---
 
 func TestQuery_Matches(t *testing.T) {
 	server := newTestServer()
@@ -167,7 +162,6 @@ func TestQuery_LiveMatches(t *testing.T) {
 		t.Fatal("respons liveMatches bukan array")
 	}
 
-	// Semua hasil harus berstatus LIVE
 	for _, m := range liveMatches {
 		match := m.(map[string]interface{})
 		if match["status"] != "LIVE" {
@@ -200,8 +194,6 @@ func TestQuery_Teams(t *testing.T) {
 		t.Error("ekspektasi setidaknya 1 tim")
 	}
 }
-
-// --- MUTATION TESTS ---
 
 func TestMutation_UpdateScore_Success(t *testing.T) {
 	server := newTestServer()
@@ -432,8 +424,6 @@ func TestMutation_CreateMatch_InvalidTime(t *testing.T) {
 	}
 }
 
-// --- SUBSCRIPTION TESTS ---
-
 func TestSubscription_MatchUpdated(t *testing.T) {
 	resolver := newTestResolver()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -445,7 +435,6 @@ func TestSubscription_MatchUpdated(t *testing.T) {
 		t.Fatalf("gagal subscribe matchUpdated: %v", err)
 	}
 
-	// Jalankan mutation UpdateScore
 	_, err = resolver.Mutation().UpdateScore(ctx, model.UpdateScoreInput{
 		MatchID:   "match-1",
 		HomeScore: 3,
@@ -455,7 +444,6 @@ func TestSubscription_MatchUpdated(t *testing.T) {
 		t.Fatalf("gagal update score: %v", err)
 	}
 
-	// Pastikan subscription menerima match yang telah di-update
 	select {
 	case updated := <-subChan:
 		if updated.ID != "match-1" {
@@ -480,7 +468,6 @@ func TestSubscription_NewEventAdded(t *testing.T) {
 		t.Fatalf("gagal subscribe newEventAdded: %v", err)
 	}
 
-	// Jalankan mutation AddMatchEvent
 	_, err = resolver.Mutation().AddMatchEvent(ctx, "match-1", model.AddMatchEventInput{
 		Minute: 55,
 		Type:   model.EventTypeGoal,
@@ -491,7 +478,6 @@ func TestSubscription_NewEventAdded(t *testing.T) {
 		t.Fatalf("gagal add match event: %v", err)
 	}
 
-	// Pastikan subscription menerima event baru
 	select {
 	case event := <-subChan:
 		if event.Player != "Gabriel Martinelli" {

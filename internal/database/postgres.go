@@ -29,7 +29,6 @@ func NewPostgresPool(ctx context.Context, connString string) (*pgxpool.Pool, err
 		return nil, fmt.Errorf("gagal membuat pool database: %w", err)
 	}
 
-	// Ping database untuk memastikan koneksi aktif
 	pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 
