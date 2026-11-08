@@ -5,10 +5,11 @@ import (
 	"log"
 	"net/http"
 
-	"football-live-score/internal/graph"
 	"football-live-score/internal/config"
 	"football-live-score/internal/database"
 	db "football-live-score/internal/database/sqlc"
+	"football-live-score/internal/graph"
+	"football-live-score/internal/pubsub"
 	"football-live-score/internal/repository/postgres"
 	"football-live-score/internal/service"
 
@@ -46,6 +47,7 @@ func main() {
 	matchService := service.NewMatchService(matchRepo, teamRepo)
 	eventService := service.NewEventService(eventRepo, matchRepo)
 	teamService := service.NewTeamService(teamRepo)
+	broker := pubsub.NewBroker()
 
 	// 5. Endpoint Health Check
 	http.HandleFunc("/healthy", HealthHandler(dbPool))
@@ -56,6 +58,7 @@ func main() {
 		MatchService: matchService,
 		EventService: eventService,
 		TeamService:  teamService,
+		Broker:       broker,
 	}
 
 	srv := handler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{Resolvers: resolver}))
